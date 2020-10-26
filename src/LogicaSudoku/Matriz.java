@@ -8,7 +8,7 @@ import java.util.Random;
 
 public class Matriz {
 	private Celda[][] tablero;
-	private Integer[][] tableroAuxiliar;
+	private int[][] tableroAuxiliar;
 	private final int cantFilasColumnas = 9;
 
 	/**
@@ -65,7 +65,7 @@ public class Matriz {
 
 		try {
 			
-			tableroAuxiliar = new Integer[this.cantFilasColumnas][this.cantFilasColumnas];		//Creo un nuevo tablero de control.
+			tableroAuxiliar = new int[this.cantFilasColumnas][this.cantFilasColumnas];		//Creo un nuevo tablero de control.
 
 			InputStream input = Matriz.class.getClassLoader().getResourceAsStream(path);
 			InputStreamReader inputRe = new InputStreamReader(input);
@@ -97,59 +97,43 @@ public class Matriz {
 
 		for (int i = 0; correcto && i < this.cantFilasColumnas; i++) {
 			for (int j = 0; correcto && j < this.cantFilasColumnas; j++) {
-				correcto = chequearElementos(i, j, tableroAuxiliar[i][j], "archivo");		//Una vez inicializado el archivo, controlo que cumpla con las reglas del sudoku.
+				correcto = chequearElementosArchivo(i, j, tableroAuxiliar[i][j]);		//Una vez inicializado el archivo, controlo que cumpla con las reglas del sudoku.
 			}
 		}
 
 		return correcto;
 	}
-
+	
 	/**
-	 * Metodo privado que controla la correctitud respecto de las reglas del sudoku. Es decir, no hay numeros repetidos en fila, columna y cuadrante.
-	 * 
+	 * Metodo privado que controla que los elementos del archivo cumplan las restricciones del sudoku.
 	 */
-	private boolean chequearElementos(int fila, int columna, Integer elemento, String cualUso) {
+	private boolean chequearElementosArchivo(int fila, int columna, int elemento) {
 		boolean correcto = true;
 		int filaInicio = 0;
 		int columnaInicio = 0;
 		int filaFin = 0;
 		int columnaFin = 0;
-		Integer[][] tableroChequeo = new Integer[this.cantFilasColumnas][this.cantFilasColumnas];
 
-		if (cualUso == "juego") {		//Si mi tablero es el juego, obtengo los valores de las celdas y creo un tablero momentaneo nuevo.
-			for (int i = 0; i < this.cantFilasColumnas; i++) {
-				for (int j = 0; j < this.cantFilasColumnas; j++) {
-					tableroChequeo[i][j] = tablero[i][j].getValor();
-				}
-			}
-		} else {
-			tableroChequeo = tableroAuxiliar;		//Como luego necesito mi estado inicial, hago una copia del tablero auxiliar. 
-		}
-
-		if (elemento != null) {
-			if (elemento < 1 || elemento > 9)	//Si el numero leido no esta en el rango [1...9], entonces no es un valor valido.
-				correcto = false;
+		if (elemento < 1 || elemento >9) 
+			correcto = false;
 		
 		// Si el digito no esta en la fila
-		for (int col = 0; correcto && col < this.cantFilasColumnas; col++) {
-			if (col != columna) {	//Evita la comparacion con si mismo.
-				if (tableroChequeo[fila][col] == elemento) {
-
-					correcto = false;
-				}
+		for (int col = columna + 1; correcto && col < 9; col++) { // comienzo desde columna+1 para que el numero no se
+																	// compare con si mismo
+			if (tableroAuxiliar[fila][col] == elemento) { // ademas ahorro comparar con los numeros recorridos
+															// previamente
+				correcto = false;
 			}
 		}
+
 		// Si el digito no esta en la columna
-		for (int fil = 0; correcto && fil < this.cantFilasColumnas; fil++) {
-			if (fila != fil) { //Evita la comparacion con si mismo.
-				if (tableroChequeo[fil][columna] == elemento) {
-					correcto = false;
-				}
+		for (int fil = fila + 1; correcto && fil < 9; fil++) { // misma situacion, comienzo en fila+1 y no se chequea
+																// con si mismo
+			if (tableroAuxiliar[fil][columna] == elemento) {
+				correcto = false;
 			}
 		}
 
-		// Si el digito no esta en el cuadrante.
-		// Coordenadas cuadrante para la fila
 		if (fila >= 0 && fila <= 2) {
 			filaInicio = 0;
 			filaFin = 2;
@@ -173,20 +157,17 @@ public class Matriz {
 			columnaFin = 8;
 		}
 
-		// Recorro exclusivamente el cuadrante del elemento.
 		for (int i = filaInicio; correcto && i <= filaFin; i++) {
 			for (int j = columnaInicio; correcto && j <= columnaFin; j++) {
-				if (tableroChequeo[i][j] == elemento && i != fila && j != columna) { // Me aseguro de no controlar al
-																						// elemento con si mismo
-																						// restringiendo la fila y la
-																						// columna.
+				if (tableroAuxiliar[i][j] == elemento && i != fila && j != columna) {
 					correcto = false;
 				}
 			}
-		}
+		
 		}
 		return correcto;
 	}
+
 
 	/**
 	 * Metodo que recorre el tablero de mi juego y controla si se cumplen las reglas del sudoku.
@@ -196,12 +177,13 @@ public class Matriz {
 
 		for (int i = 0; i < this.cantFilasColumnas; i++) {
 			for (int j = 0; j < this.cantFilasColumnas; j++) {
-				if (tablero[i][j].getValor() != null && tablero[i][j].getModificar()) {		//Si mi celda no es nula, y puede ser modificada, controlo el elemento.
-					correcto = chequearElementos(i, j, tablero[i][j].getValor(), "juego");		//Chequeo fila, columna y cuadrante, con otro metodo privado. 
+				if (tablero[i][j].getValor() != null && tablero[i][j].getModificar()) { //Si mi celda no es nula, y puede ser modificada, controlo el elemento.
+					correcto = chequearElementoTablero(i, j, tablero[i][j].getValor());		//Chequeo fila, columna y cuadrante, con otro metodo privado. 
 				}
 
+		
 				if (!correcto) {											//Si algun elemento incumple las reglas, modifico su estado interno.
-					if (tablero[i][j].getModificar()) {							
+					if (tablero[i][j].getModificar()) {	
 						tablero[i][j].setValor(tablero[i][j].getValor(), false);	//Con un parametro falso, indica que debe ser utilizada la imagen incorrecta.
 					}
 				}
@@ -209,6 +191,70 @@ public class Matriz {
 		}
 	}
 
+	/**
+	 * Metodo que chequea si el tablero de juego respeta las reglas del sudoku en un momento determinado. 
+	 */
+	public boolean chequearElementoTablero(int fila, int columna, Integer valorCelda) {
+		boolean correcto = true;
+		int filaInicio = 0;
+		int columnaInicio = 0;
+		int filaFin = 0;
+		int columnaFin = 0;
+
+		if (valorCelda != null) {
+			// Si el digito no esta en la fila
+			for (int col = 0; correcto && col < 9; col++) { 
+																	
+				if (tablero[fila][col].getValor() == valorCelda && col != columna) { 
+					System.out.println (tablero[fila][col].getModificar());
+													
+					correcto = false;
+				}
+			}
+			
+
+			// Si el digito no esta en la columna
+			for (int fil = 0; correcto && fil < 9; fil++) { 
+														
+				if (tablero[fil][columna].getValor() == valorCelda && fila != fil) {
+					correcto = false;
+				}
+			}
+
+			// Coordenadas cuadrante para la fila
+			if (fila >= 0 && fila <= 2) {
+				filaInicio = 0;
+				filaFin = 2;
+			} else if (fila >= 3 && fila <= 5) {
+				filaInicio = 3;
+				filaFin = 5;
+			} else {
+				filaInicio = 6;
+				filaFin = 8;
+			}
+
+			// Coordenadas cuadrante para la columna
+			if (columna >= 0 && columna <= 2) {
+				columnaInicio = 0;
+				columnaFin = 2;
+			} else if (columna >= 3 && columna <= 5) {
+				columnaInicio = 3;
+				columnaFin = 5;
+			} else {
+				columnaInicio = 6;
+				columnaFin = 8;
+			}
+
+			for (int i = filaInicio; correcto && i <= filaFin; i++) {
+				for (int j = columnaInicio; correcto && j <= columnaFin; j++) {
+					if (tablero[i][j].getValor() == valorCelda && i != fila && j != columna) {
+						correcto = false;
+					}
+				}
+			}
+		}
+		return correcto;
+	}
 	
 	/**
 	 * Metodo que chequea si el jugador gano la partida.
@@ -218,7 +264,7 @@ public class Matriz {
 
 		for (int i = 0; gano && i < this.cantFilasColumnas; i++) {		//Recorro todo el tablero
 			for (int j = 0; gano && j < this.cantFilasColumnas; j++) {
-				gano = this.chequearElementos(i, j, tablero[i][j].getValor(), "juego");	//Controlo que ningun elemento incumpla las reglas
+				gano = this.chequearElementoTablero(i, j, tablero[i][j].getValor());	//Controlo que ningun elemento incumpla las reglas
 				if (tablero[i][j].getValor() == null) {	//Y controlo que no queden celdas vacias.
 					gano = false;
 				}
